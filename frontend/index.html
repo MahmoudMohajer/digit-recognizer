@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Digit Recognizer</title>
+</head>
+<body>
+  <h1>Draw a Digit (0-9)</h1>
+  <canvas id="canvas" width="280" height="280" style="border:1px solid black;"></canvas><br>
+  <button onclick="clearCanvas()">Clear</button>
+  <button onclick="submitCanvas()">Predict</button>
+  <p id="result"></p>
+
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    let drawing = false;
+
+    canvas.addEventListener("mousedown", () => drawing = true);
+    canvas.addEventListener("mouseup", () => drawing = false);
+    canvas.addEventListener("mousemove", draw);
+
+    function draw(e) {
+      if (!drawing) return;
+      ctx.fillStyle = "black";
+      ctx.beginPath();
+      ctx.arc(e.offsetX, e.offsetY, 10, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function clearCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function submitCanvas() {
+      canvas.toBlob(blob => {
+        const formData = new FormData();
+        formData.append("file", blob, "digit.png");
+
+        fetch("http://localhost:8000/predict/", {
+          method: "POST",
+          body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById("result").innerText = "Prediction: " + data.prediction;
+        });
+      }, "image/png");
+    }
+  </script>
+</body>
+</html>
