@@ -37,7 +37,6 @@ for epoch in range(20):
         loss.backward()
         optimizer.step()
     print(f"Epoch {epoch+1} loss: {loss.item():.4f}")
-    wandb.log({"train_loss": loss.item()})
 
     # Evaluate on test set
     model.eval()
@@ -55,7 +54,7 @@ for epoch in range(20):
     avg_test_loss = test_loss / total
     accuracy = correct / total
     print(f"Test loss: {avg_test_loss:.4f}, Accuracy: {accuracy:.4f}")
-    wandb.log({"test_loss": avg_test_loss, "test_accuracy": accuracy})
+    wandb.log({"train_loss": loss.item(),"test_loss": avg_test_loss, "test_accuracy": accuracy})
 
 # Save model
 torch.save(model.state_dict(), "./saved_model/model.pth")
