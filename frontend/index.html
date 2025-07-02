@@ -15,29 +15,32 @@
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
 
-    // ✅ Set canvas to white once
-    ctx.fillStyle = "white";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // ✅ Set draw color to black
-    ctx.fillStyle = "black";
-
     let drawing = false;
+
+    // ✅ Set canvas background to white once
+    function fillWhiteBackground() {
+      ctx.fillStyle = "white";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // Initialize canvas
+    fillWhiteBackground();
 
     canvas.addEventListener("mousedown", () => drawing = true);
     canvas.addEventListener("mouseup", () => drawing = false);
+    canvas.addEventListener("mouseout", () => drawing = false);
     canvas.addEventListener("mousemove", draw);
 
     function draw(e) {
       if (!drawing) return;
-      ctx.fillStyle = "black";
+      ctx.fillStyle = "black"; // ✅ Digit stroke color
       ctx.beginPath();
-      ctx.arc(e.offsetX, e.offsetY, 10, 0, Math.PI * 2);
+      ctx.arc(e.offsetX, e.offsetY, 10, 0, Math.PI * 2); // Brush radius = 10
       ctx.fill();
     }
 
     function clearCanvas() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      fillWhiteBackground();  // ✅ Make sure background is white after clear
     }
 
     function submitCanvas() {
@@ -52,6 +55,9 @@
         .then(res => res.json())
         .then(data => {
           document.getElementById("result").innerText = "Prediction: " + data.prediction;
+        })
+        .catch(err => {
+          document.getElementById("result").innerText = "Error: " + err.message;
         });
       }, "image/png");
     }

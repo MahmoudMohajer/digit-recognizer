@@ -1,21 +1,16 @@
+from torchvision import datasets, transforms
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 import io
 import torch
-from torchvision import datasets, transforms
 from PIL import Image, ImageOps
 import torchvision.transforms as T
 from model.model import DigitCNN
-import matplotlib.pyplot as plt
 import torchvision.transforms.functional as TF
-
-# Just before prediction
-
 
 app = FastAPI()
 
-# CORS for frontend
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -28,30 +23,33 @@ model = DigitCNN()
 model.load_state_dict(torch.load("saved_model/model.pth", map_location="cpu"))
 model.eval()
 
+# Define transform (no inversion here)
 transform = T.Compose([
     T.Resize((28, 28)),
-    ImageOps.invert,  # We'll apply manually below
     T.ToTensor(),
     T.Normalize((0.1307,), (0.3081,))
 ])
 
 @app.post("/predict/")
 async def predict(file: UploadFile = File(...)):
-    image = Image.open(io.BytesIO(await file.read())).convert("L")  # Grayscale
+    # Load and convert to grayscale
+    image = Image.open(io.BytesIO(await file.read())).convert("L")
 
-    # 🔄 Invert color: your canvas is black on white, MNIST is white on black
+    # ✅ Invert colors manually (canvas = black on white, MNIST = white on black)
     image = ImageOps.invert(image)
 
-    # ✂️ Resize and normalize
-    image = transform(image).unsqueeze(0)  # Shape: (1, 1, 28, 28)
+    # ✅ Apply transform
+    image_tensor = transform(image).unsqueeze(0)  # Shape: [1, 1, 28, 28]
 
+    # ✅ Save debug image (non-normalized for visual check)
+    debug_img = TF.to_pil_image(image_tensor.squeeze(0) * 0.3081 + 0.1307)  # unnormalize
+    debug_img.save("debug_input.png")
 
-    # Just before prediction
-    TF.to_pil_image(image.squeeze()).save("debug_input.png")
-
+    # Predict
     with torch.no_grad():
-        output = model(image)
+        output = model(image_tensor)
         pred = output.argmax(dim=1).item()
+
     return {"prediction": pred}
 
 
