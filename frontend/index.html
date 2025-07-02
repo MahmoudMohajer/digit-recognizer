@@ -14,6 +14,14 @@
   <script>
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
+
+    // ✅ Set canvas to white once
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // ✅ Set draw color to black
+    ctx.fillStyle = "black";
+
     let drawing = false;
 
     canvas.addEventListener("mousedown", () => drawing = true);
