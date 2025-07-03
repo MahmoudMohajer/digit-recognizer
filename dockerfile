@@ -5,7 +5,8 @@ FROM python:3.12.2
 WORKDIR /app
 
 # Copy requirements and install dependencies
-COPY requirements.txt .
+COPY pyproject.toml .
+COPY poetry.lock .
 RUN pip install --no-cache-dir poetry
 RUN poetry install --only main
 
