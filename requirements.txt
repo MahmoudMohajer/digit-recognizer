@@ -5,3 +5,4 @@ uvicorn
 pillow
 onnxruntime
 numpy
+python-multipart

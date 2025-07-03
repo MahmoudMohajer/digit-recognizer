@@ -11,6 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy backend, model, and saved_model folders
 COPY backend/ ./backend/
 COPY saved_model/ ./saved_model/
+COPY frontend/ ./frontend
 
 # Expose FastAPI port
 EXPOSE 8000
