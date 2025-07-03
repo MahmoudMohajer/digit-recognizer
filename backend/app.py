@@ -1,12 +1,9 @@
-from torchvision import datasets, transforms
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 import io
-import torch
 from PIL import Image, ImageOps
-import torchvision.transforms as T
-from model.model import DigitCNN
-import torchvision.transforms.functional as TF
+import onnxruntime as ort
+import numpy as np
 
 app = FastAPI()
 
@@ -18,47 +15,43 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-# Load model
-model = DigitCNN()
-model.load_state_dict(torch.load("saved_model/model.pth", map_location="cpu"))
-model.eval()
 
-# Define transform (no inversion here)
-transform = T.Compose([
-    T.Resize((28, 28)),
-    T.ToTensor(),
-    T.Normalize((0.1307,), (0.3081,))
-])
+# Load ONNX model
+ort_session = ort.InferenceSession("saved_model/model.onnx")
+
+def preprocess_image(image):
+    # Resize to 28x28
+    image = image.resize((28, 28))
+    # Convert to numpy array and scale to [0, 1]
+    arr = np.array(image).astype(np.float32) / 255.0
+    # Normalize using MNIST mean and std
+    arr = (arr - 0.1307) / 0.3081
+    # Add channel and batch dimensions: [1, 1, 28, 28]
+    arr = arr[np.newaxis, np.newaxis, :, :]
+    return arr
 
 @app.post("/predict/")
 async def predict(file: UploadFile = File(...)):
     # Load and convert to grayscale
     image = Image.open(io.BytesIO(await file.read())).convert("L")
 
-    # ✅ Invert colors manually (canvas = black on white, MNIST = white on black)
+    # Invert colors manually (canvas = black on white, MNIST = white on black)
     image = ImageOps.invert(image)
 
-    # ✅ Apply transform
-    image_tensor = transform(image).unsqueeze(0)  # Shape: [1, 1, 28, 28]
+    # Preprocess the image
+    input_array = preprocess_image(image)
 
-    # ✅ Save debug image (non-normalized for visual check)
-    debug_img = TF.to_pil_image(image_tensor.squeeze(0) * 0.3081 + 0.1307)  # unnormalize
-    debug_img.save("debug_input.png")
+    # Convert the preprocessed array back to a PNG and save for inspection
+    # Undo normalization for visualization
+    arr_vis = input_array[0, 0] * 0.3081 + 0.1307  # de-normalize
+    arr_vis = np.clip(arr_vis * 255, 0, 255).astype(np.uint8)
+    img_vis = Image.fromarray(arr_vis)
+    img_vis.save("preprocessed.png")  # This will save the image on the server
 
-    # Predict
-    with torch.no_grad():
-        output = model(image_tensor)
-        pred = output.argmax(dim=1).item()
+    # ONNX inference
+    ort_inputs = {"input": input_array.astype(np.float32)}
+    ort_outs = ort_session.run(None, ort_inputs)
+    pred = np.argmax(ort_outs[0], axis=1)[0]
 
-    return {"prediction": pred}
+    return {"prediction": int(pred)}
 
-
-test_loader = torch.utils.data.DataLoader(
-    datasets.MNIST(root='./data', train=False, download=True,
-                   transform=transforms.ToTensor()),
-    batch_size=1, shuffle=True
-)
-
-x, y = next(iter(test_loader))
-pred = model(x).argmax(dim=1)
-print(f"Label: {y.item()}, Prediction: {pred.item()}")
