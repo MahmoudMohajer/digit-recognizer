@@ -6,8 +6,7 @@ WORKDIR /app
 
 # Copy requirements and install dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir poetry
-RUN poetry install --only main
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy backend, model, and saved_model folders
 COPY backend/ ./backend/
