@@ -1,6 +1,8 @@
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 import io
+import os
 from PIL import Image, ImageOps
 import onnxruntime as ort
 import numpy as np
@@ -29,6 +31,10 @@ def preprocess_image(image):
     # Add channel and batch dimensions: [1, 1, 28, 28]
     arr = arr[np.newaxis, np.newaxis, :, :]
     return arr
+
+@app.get("/")
+async def index():
+    return FileResponse("frontend/index.html")
 
 @app.post("/predict/")
 async def predict(file: UploadFile = File(...)):
